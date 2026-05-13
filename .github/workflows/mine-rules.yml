@@ -1,0 +1,51 @@
+name: Stop Slop Rule Mining
+
+on:
+  schedule:
+    # Weekly on Monday 09:00 UTC.
+    - cron: "0 9 * * 1"
+  workflow_dispatch:
+    inputs:
+      min_frequency:
+        description: "Minimum distinct-source frequency to propose a rule"
+        required: false
+        default: "2"
+      max_samples:
+        description: "Cap on samples to process this run"
+        required: false
+        default: "25"
+      dry_run:
+        description: "If true, run the mining but skip PR creation"
+        required: false
+        default: "false"
+        type: choice
+        options: ["false", "true"]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  mine:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r scripts/requirements.txt
+
+      - name: Run rule miner
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          ANTHROPIC_MODEL: claude-sonnet-4-6
+          MINE_RULES_MIN_FREQUENCY: ${{ github.event.inputs.min_frequency || '2' }}
+          MINE_RULES_MAX_SAMPLES: ${{ github.event.inputs.max_samples || '25' }}
+          MINE_RULES_DRY_RUN: ${{ github.event.inputs.dry_run == 'true' && '1' || '0' }}
+          MINE_RULES_BASE_BRANCH: ${{ github.event.repository.default_branch }}
+        run: python scripts/mine_rules.py
