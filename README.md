@@ -53,6 +53,10 @@ Rate 1-10 on each dimension:
 
 Below 35/50: revise.
 
+## Other skills in this repo
+
+- [`skill-creator/`](skill-creator/): a skill for building Claude skills. Runs a five-question interview and emits a valid `SKILL.md` plus reference files.
+
 ## Author
 
 [Hardik Pandya](https://hvpandya.com)
