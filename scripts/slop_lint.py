@@ -372,6 +372,16 @@ def main() -> int:
         print("Event has no pull_request.number / head.sha; nothing to do.", file=sys.stderr)
         return 0
 
+    # Missing key is a setup state, not a slop verdict. The linter is advisory
+    # and must not block merge, so we exit cleanly with a console note.
+    if not os.environ.get("ANTHROPIC_API_KEY"):
+        print(
+            "ANTHROPIC_API_KEY is not set. Skipping Stop Slop review. "
+            "Add the secret in repo Settings -> Secrets and variables -> Actions.",
+            file=sys.stderr,
+        )
+        return 0
+
     files = fetch_pr_files(repo, pr_number, token)
     targets: list[ChangedFile] = []
     for entry in files:
