@@ -53,6 +53,30 @@ Rate 1-10 on each dimension:
 
 Below 35/50: revise.
 
+## Automation
+
+Two GitHub Actions wrap the skill:
+
+**`Stop Slop Lint`** (`.github/workflows/slop-lint.yml`) runs on every PR that
+touches `*.md`. It sends the changed prose to Claude with the skill bundle
+attached, then posts a single review with inline rewrite suggestions and a
+1-10 score across the five rubric dimensions. Advisory only — never blocks
+merge. `references/*.md` and `LICENSE` are skipped, since the references
+catalog the patterns by design. Add `<!-- slop-lint: skip -->` to a file to opt
+it out individually.
+
+**`Stop Slop Rule Mining`** (`.github/workflows/mine-rules.yml`) runs weekly
+(Monday 09:00 UTC) and on-demand from the Actions tab. It reads AI-prose
+samples from `corpus/samples/*.{md,txt}` and URLs in `corpus/sources.txt`,
+asks Claude to surface patterns not already covered by the rule set, clusters
+them across samples, and opens a draft PR with additions to
+`references/phrases.md` / `references/structures.md` for any pattern appearing
+in at least two distinct sources.
+
+Both workflows require an `ANTHROPIC_API_KEY` repository secret. Model
+defaults to `claude-sonnet-4-6`; override via the `ANTHROPIC_MODEL` env in the
+workflow file.
+
 ## Author
 
 [Hardik Pandya](https://hvpandya.com)
