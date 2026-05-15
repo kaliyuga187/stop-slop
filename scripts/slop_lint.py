@@ -26,10 +26,10 @@ from _shared import call_claude, extract_json, get_client, load_skill_bundle
 
 GITHUB_API = "https://api.github.com"
 
-# Files the linter should never review. references/*.md catalog the patterns by
-# design, so reviewing them produces meaningless findings.
+# Files the linter should never review. references/*.md catalog the patterns
+# by design, and corpus/*.md is intentionally sloppy mining input.
 SKIP_FILES = {"LICENSE", "CHANGELOG.md"}
-SKIP_PREFIXES = ("references/",)
+SKIP_PREFIXES = ("references/", "corpus/")
 OPT_OUT_MARKER = "<!-- slop-lint: skip -->"
 
 
