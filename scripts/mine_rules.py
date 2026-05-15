@@ -426,8 +426,13 @@ def main() -> int:
 
     token = os.environ["GITHUB_TOKEN"]
     repo = os.environ["GITHUB_REPOSITORY"]
-    today = dt.date.today().isoformat()
-    branch = f"rule-mining/{today}"
+    # Timestamped branch name so re-runs on the same day never collide with
+    # a previous run's branch (and never force-update a branch that already
+    # has an open PR on it).
+    now = dt.datetime.now(dt.timezone.utc)
+    today = now.date().isoformat()
+    stamp = now.strftime("%Y%m%dT%H%M%SZ")
+    branch = f"rule-mining/{stamp}"
     title = f"Rule mining: {len(additions)} proposed addition(s) ({today})"
     body = format_pr_body(additions, samples_used=len(samples))
 

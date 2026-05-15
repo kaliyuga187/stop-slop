@@ -9,7 +9,10 @@ from __future__ import annotations
 
 import json
 import os
+import random
 import re
+import sys
+import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -22,6 +25,8 @@ REFERENCES_DIR = REPO_ROOT / "references"
 
 MODEL = os.environ.get("ANTHROPIC_MODEL", "claude-sonnet-4-6")
 MAX_TOKENS = int(os.environ.get("ANTHROPIC_MAX_TOKENS", "4096"))
+RETRY_ATTEMPTS = int(os.environ.get("ANTHROPIC_RETRY_ATTEMPTS", "4"))
+RETRY_BASE_SECONDS = float(os.environ.get("ANTHROPIC_RETRY_BASE_SECONDS", "2.0"))
 
 
 @dataclass
@@ -62,6 +67,16 @@ def get_client() -> anthropic.Anthropic:
     return anthropic.Anthropic(api_key=key)
 
 
+# Retry these on transient failures. Authentication / bad-request errors
+# bubble up immediately so misconfiguration fails loudly.
+_RETRYABLE = (
+    anthropic.RateLimitError,
+    anthropic.APIConnectionError,
+    anthropic.APITimeoutError,
+    anthropic.InternalServerError,
+)
+
+
 def call_claude(
     client: anthropic.Anthropic,
     bundle: SkillBundle,
@@ -70,7 +85,12 @@ def call_claude(
     max_tokens: int | None = None,
     extra_system: str | None = None,
 ) -> str:
-    """Send a single-turn request with the skill bundle cached as a system block."""
+    """Send a single-turn request with the skill bundle cached as a system block.
+
+    Retries transient errors (rate limits, network blips, 5xx, timeouts) with
+    exponential backoff plus jitter. Permanent errors (auth, bad request)
+    propagate on the first attempt.
+    """
 
     system_blocks: list[dict[str, Any]] = [
         {
@@ -82,12 +102,29 @@ def call_claude(
     if extra_system:
         system_blocks.append({"type": "text", "text": extra_system})
 
-    resp = client.messages.create(
-        model=MODEL,
-        max_tokens=max_tokens or MAX_TOKENS,
-        system=system_blocks,
-        messages=[{"role": "user", "content": user_prompt}],
-    )
+    last_error: Exception | None = None
+    for attempt in range(RETRY_ATTEMPTS):
+        try:
+            resp = client.messages.create(
+                model=MODEL,
+                max_tokens=max_tokens or MAX_TOKENS,
+                system=system_blocks,
+                messages=[{"role": "user", "content": user_prompt}],
+            )
+            break
+        except _RETRYABLE as e:
+            last_error = e
+            if attempt == RETRY_ATTEMPTS - 1:
+                raise
+            delay = RETRY_BASE_SECONDS * (2**attempt) + random.uniform(0, 0.5)
+            print(
+                f"Anthropic transient error ({type(e).__name__}); "
+                f"retry {attempt + 1}/{RETRY_ATTEMPTS - 1} after {delay:.1f}s",
+                file=sys.stderr,
+            )
+            time.sleep(delay)
+    else:  # pragma: no cover - unreachable because we either break or raise
+        raise RuntimeError(f"Exhausted retries calling Anthropic: {last_error}")
 
     parts: list[str] = []
     for block in resp.content:
