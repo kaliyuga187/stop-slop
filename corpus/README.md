@@ -26,3 +26,24 @@ opens a draft PR with the additions appended to `references/phrases.md` or
 
 Trigger manually from the Actions tab (`Stop Slop Rule Mining` → `Run workflow`)
 or wait for the weekly Monday 09:00 UTC cron.
+
+## Seeded smoke-test samples
+
+`samples/seed-*.md` are synthetic AI-prose samples written by Claude as a
+smoke test for the mining pipeline. They are *not* a representative real-world
+corpus — they exist so the miner has something to chew on for end-to-end
+verification before real samples land. Replace or delete them once you have
+real text to mine.
+
+The four seeds (`seed-thought-leadership.md`, `seed-product-launch.md`,
+`seed-personal-essay.md`, `seed-twitter-thread.md`) share several patterns
+on purpose so the cross-sample clustering pass has material to find:
+
+- `"Quick story:" / "Quick context:" / "Quick aside:"` micro-narrative openers
+- `"Sound familiar?"` rhetorical-question transitions
+- `"Hot take:" / "Unpopular opinion:"` opinion-disclaimer labels
+- `"TL;DR: / "Bottom line: / "The takeaway:"` summary-tag closers
+- `"It's [year] and..."` temporal scene-setters
+
+A successful smoke run should produce a draft PR that proposes additions
+covering some subset of those patterns.
